@@ -6,7 +6,7 @@ import pandas as pd
 from .sources.base import DataSource
 from .sources.csv_source import CSVSource
 from .sources.excel_source import ExcelSource
-
+from .sources.sqlite_source import SQLiteSource
 class TableImporter:
     """
     Основной класс библиотеки для импорта табличных данных.
@@ -25,11 +25,12 @@ class TableImporter:
         self.source = self._create_source()
 
     
+    
     def _create_source(self) -> DataSource:
         """
-        Выбирает класс источника по расширению файла.
+        Создаёт подходящий источник по расширению файла.
 
-        Сейчас поддерживаются CSV и XLSX.
+        Поддерживает CSV, XLSX и SQLite.
         """
         extension = self.path.suffix.lower()
 
@@ -38,6 +39,9 @@ class TableImporter:
 
         if extension == ".xlsx":
             return ExcelSource(self.path)
+
+        if extension in {".db", ".sqlite", ".sqlite3"}:
+            return SQLiteSource(self.path)
 
         raise ValueError(
             f"Неподдерживаемый формат файла: {extension}"
@@ -65,10 +69,43 @@ class TableImporter:
         :param limit: Максимальное число строк для анализа.
         :return: Словарь с метаданными.
         """
-        if table is None:
-            table = self.get_tables()[0]
+        table = self._resolve_table(table)
 
         return self.source.scan(table, limit)
+    
+    def _resolve_table(self, table: str | None) -> str:
+        """
+        Определяет таблицу для работы.
+
+        Если источник содержит одну таблицу,
+        она выбирается автоматически.
+
+        Если таблиц несколько, пользователь
+        обязан указать название.
+        """
+        tables = self.get_tables()
+
+        if table is not None:
+            if table not in tables:
+                raise ValueError(
+                    f"Таблица '{table}' не найдена. "
+                    f"Доступные таблицы: {tables}"
+                )
+
+            return table
+
+        if not tables:
+            raise ValueError(
+                "Источник не содержит доступных таблиц"
+            )
+
+        if len(tables) == 1:
+            return tables[0]
+
+        raise ValueError(
+            "Источник содержит несколько таблиц. "
+            f"Укажите table. Доступные таблицы: {tables}"
+        )
 
     def load(
         self,
@@ -82,8 +119,7 @@ class TableImporter:
         :param chunk_size: Количество строк в одной части.
         :return: Итоговый pandas DataFrame.
         """
-        if table is None:
-            table = self.get_tables()[0]
+        table = self._resolve_table(table)
 
         chunks = []
 
