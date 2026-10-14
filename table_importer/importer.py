@@ -5,7 +5,7 @@ import pandas as pd
 
 from .sources.base import DataSource
 from .sources.csv_source import CSVSource
-
+from .sources.excel_source import ExcelSource
 
 class TableImporter:
     """
@@ -24,16 +24,20 @@ class TableImporter:
         self.path = Path(path)
         self.source = self._create_source()
 
+    
     def _create_source(self) -> DataSource:
         """
-        Определяет подходящий источник по расширению файла.
+        Выбирает класс источника по расширению файла.
 
-        :return: Объект источника данных.
+        Сейчас поддерживаются CSV и XLSX.
         """
         extension = self.path.suffix.lower()
 
         if extension == ".csv":
             return CSVSource(self.path)
+
+        if extension == ".xlsx":
+            return ExcelSource(self.path)
 
         raise ValueError(
             f"Неподдерживаемый формат файла: {extension}"
