@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from table_importer import TableImporter
-
+from table_importer.exceptions import UnsupportedSourceError
 
 def test_importer_scan(tmp_path):
     """
@@ -50,16 +50,20 @@ def test_importer_load(tmp_path):
     )
 
 
+
 def test_unsupported_source(tmp_path):
     """
-    Проверяет ошибку для неподдерживаемого формата.
+    Проверяет ошибку при попытке открыть файл
+    неподдерживаемого формата.
     """
     path = tmp_path / "data.txt"
 
+    # Создаём файл с неподдерживаемым расширением.
     path.write_text("test", encoding="utf-8")
 
+    # Проверяем, что возникает наше исключение.
     with pytest.raises(
-        ValueError,
+        UnsupportedSourceError,
         match="Неподдерживаемый формат"
     ):
         TableImporter(path)

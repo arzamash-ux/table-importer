@@ -4,7 +4,11 @@ from pathlib import Path
 import pandas as pd
 
 from .base import DataSource
-
+from ..exceptions import (
+    SourceNotFoundError,
+    TableNotFoundError,
+    SourceReadError,
+)
 
 class CSVSource(DataSource):
     """Источник данных для CSV-файлов."""
@@ -14,8 +18,8 @@ class CSVSource(DataSource):
         self.path = Path(path)
 
         if not self.path.is_file():
-            raise FileNotFoundError(
-                f"CSV file not found: {self.path}"
+            raise SourceNotFoundError(
+                f"CSV-файл не найден: {self.path}"
             )
 
     def get_tables(self) -> list[str]:
@@ -28,8 +32,11 @@ class CSVSource(DataSource):
             raise ValueError("Scan limit must be positive")
 
         if table not in self.get_tables():
-            raise ValueError(f"Unknown table: {table}")
-
+            raise TableNotFoundError(
+                f"Таблица '{table}' не найдена. "
+                f"Доступные таблицы: {self.get_tables()}"
+                )
+        
         sample = pd.read_csv(
             self.path,
             nrows=limit

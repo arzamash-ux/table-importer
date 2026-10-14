@@ -5,7 +5,10 @@ import pandas as pd
 import pytest
 
 from table_importer import TableImporter
-
+from table_importer.exceptions import (
+    SourceNotFoundError,
+    TableNotFoundError,
+)
 
 @pytest.fixture
 def sqlite_database(tmp_path):
@@ -135,7 +138,7 @@ def test_sqlite_unknown_table(sqlite_database):
     importer = TableImporter(sqlite_database)
 
     with pytest.raises(
-        ValueError,
+        TableNotFoundError,
         match="не найдена"
     ):
         importer.scan(
@@ -151,7 +154,7 @@ def test_sqlite_missing_database(tmp_path):
     """
     path = tmp_path / "missing.db"
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(SourceNotFoundError):
         TableImporter(path)
 
     assert not path.exists()

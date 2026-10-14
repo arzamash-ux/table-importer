@@ -7,7 +7,11 @@ import pandas as pd
 from openpyxl import load_workbook
 
 from .base import DataSource
-
+from ..exceptions import (
+    SourceNotFoundError,
+    TableNotFoundError,
+    SourceReadError,
+)
 
 class ExcelSource(DataSource):
     """
@@ -27,7 +31,7 @@ class ExcelSource(DataSource):
         self.path = Path(path)
 
         if not self.path.is_file():
-            raise FileNotFoundError(
+            raise SourceNotFoundError(
                 f"Excel-файл не найден: {self.path}"
             )
 
@@ -75,7 +79,7 @@ class ExcelSource(DataSource):
 
         try:
             if table not in workbook.sheetnames:
-                raise ValueError(
+                raise TableNotFoundError(
                     f"Лист '{table}' не найден. "
                     f"Доступные листы: {workbook.sheetnames}"
                 )
@@ -133,7 +137,7 @@ class ExcelSource(DataSource):
         Возвращает итератор объектов pandas.DataFrame.
         """
         if chunk_size <= 0:
-            raise ValueError(
+            raise TableNotFoundError(
                 "Размер части должен быть положительным"
             )
 

@@ -7,7 +7,11 @@ from pathlib import Path
 import pandas as pd
 
 from .base import DataSource
-
+from ..exceptions import (
+    SourceNotFoundError,
+    TableNotFoundError,
+    SourceReadError,
+)
 
 class SQLiteSource(DataSource):
     """
@@ -28,7 +32,7 @@ class SQLiteSource(DataSource):
         self.path = Path(path)
 
         if not self.path.is_file():
-            raise FileNotFoundError(
+            raise SourceNotFoundError(
                 f"База данных SQLite не найдена: {self.path}"
             )
 
@@ -79,7 +83,7 @@ class SQLiteSource(DataSource):
         available_tables = self.get_tables()
 
         if table not in available_tables:
-            raise ValueError(
+            raise TableNotFoundError(
                 f"Таблица '{table}' не найдена. "
                 f"Доступные таблицы: {available_tables}"
             )

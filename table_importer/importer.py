@@ -8,6 +8,8 @@ from .sources.csv_source import CSVSource
 from .sources.excel_source import ExcelSource
 from .sources.sqlite_source import SQLiteSource
 from .session import ImportSession
+from .exceptions import UnsupportedSourceError
+from .exceptions import TableNotFoundError
 class TableImporter:
     """
     Основной класс библиотеки для импорта табличных данных.
@@ -44,21 +46,26 @@ class TableImporter:
         if extension in {".db", ".sqlite", ".sqlite3"}:
             return SQLiteSource(self.path)
 
-        raise ValueError(
+        raise UnsupportedSourceError(
             f"Неподдерживаемый формат файла: {extension}"
-        )
+            )
+    
     
     def create_session(
         self,
         table: str | None = None,
-        chunk_size: int = 10000
+        chunk_size: int = 10000,
+        dtype: dict[str, str] | None = None,
+        conversion_errors: str = "raise"
     ) -> ImportSession:
         """
-        Создаёт сессию для итерационного импорта.
+        Создаёт сессию импорта данных.
 
         Аргументы:
             table: Название таблицы или листа.
-            chunk_size: Количество строк в одной части.
+            chunk_size: Размер одной части.
+            dtype: Требуемые типы столбцов.
+            conversion_errors: Режим обработки ошибок.
 
         Возвращает:
             Объект ImportSession.
@@ -75,7 +82,12 @@ class TableImporter:
             chunk_size=chunk_size
         )
 
-        return ImportSession(chunks)
+        return ImportSession(
+            chunks=chunks,
+            dtype=dtype,
+            conversion_errors=conversion_errors
+        )
+
 
     def get_tables(self) -> list[str]:
         """
@@ -103,54 +115,58 @@ class TableImporter:
 
         return self.source.scan(table, limit)
     
+    
     def _resolve_table(self, table: str | None) -> str:
         """
-        Определяет таблицу для работы.
+        Определяет таблицу для выполнения операции.
 
-        Если источник содержит одну таблицу,
-        она выбирается автоматически.
-
-        Если таблиц несколько, пользователь
-        обязан указать название.
+        Если таблица одна, выбирает её автоматически.
+        Если таблиц несколько, требует явного выбора.
         """
-        tables = self.get_tables()
+        available_tables = self.get_tables()
 
         if table is not None:
-            if table not in tables:
-                raise ValueError(
+            if table not in available_tables:
+                raise TableNotFoundError(
                     f"Таблица '{table}' не найдена. "
-                    f"Доступные таблицы: {tables}"
+                    f"Доступные таблицы: {available_tables}"
                 )
 
             return table
 
-        if not tables:
-            raise ValueError(
-                "Источник не содержит доступных таблиц"
+        if not available_tables:
+            raise TableNotFoundError(
+                "Источник данных не содержит таблиц"
             )
 
-        if len(tables) == 1:
-            return tables[0]
+        if len(available_tables) == 1:
+            return available_tables[0]
 
         raise ValueError(
             "Источник содержит несколько таблиц. "
-            f"Укажите table. Доступные таблицы: {tables}"
+            f"Укажите table. Доступные таблицы: {available_tables}"
         )
 
+
+    
     
     def load(
         self,
         table: str | None = None,
-        chunk_size: int = 10000
+        chunk_size: int = 10000,
+        dtype: dict[str, str] | None = None,
+        conversion_errors: str = "raise"
     ) -> pd.DataFrame:
         """
-        Загружает таблицу полностью через сессию.
+        Полностью загружает таблицу в DataFrame.
 
-        Возвращает единый pandas.DataFrame.
+        При необходимости преобразует типы столбцов.
         """
         session = self.create_session(
             table=table,
-            chunk_size=chunk_size
+            chunk_size=chunk_size,
+            dtype=dtype,
+            conversion_errors=conversion_errors
         )
 
         return session.load_all()

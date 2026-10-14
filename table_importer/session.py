@@ -1,6 +1,6 @@
 
 from collections.abc import Iterator
-
+from .converters import convert_chunk
 import pandas as pd
 
 
@@ -16,25 +16,42 @@ class ImportSession:
     - собирать загруженные данные в один DataFrame.
     """
 
-    def __init__(self, chunks: Iterator[pd.DataFrame]):
+    def __init__(
+        self,
+        chunks: Iterator[pd.DataFrame],
+        dtype: dict[str, str] | None = None,
+        conversion_errors: str = "raise"
+    ):
         """
-        Создаёт новую сессию импорта.
+        Создаёт сессию импорта.
 
         Аргументы:
-            chunks: Итератор, возвращающий части таблицы.
+            chunks: Итератор частей таблицы.
+            dtype: Требуемые типы столбцов.
+            conversion_errors: Режим обработки ошибок.
         """
+        if conversion_errors not in {"raise", "coerce"}:
+            raise ValueError(
+                "conversion_errors должен быть "
+                "'raise' или 'coerce'"
+            )
+
         self._iterator = iter(chunks)
 
-        # Хранилище уже загруженных частей.
+        # Словарь преобразований сохраняется в сессии.
+        self._dtype = dtype.copy() if dtype else None
+        self._conversion_errors = conversion_errors
+
+        # Накопленные части данных.
         self._chunks = []
 
-        # Количество загруженных строк.
+        # Количество успешно загруженных строк.
         self._processed_rows = 0
 
-        # Состояние сессии.
+        # Состояние процесса импорта.
         self._paused = False
         self._finished = False
-
+    
     @property
     def processed_rows(self) -> int:
         """
@@ -76,30 +93,36 @@ class ImportSession:
             self._paused = False
 
     def next_chunk(self) -> pd.DataFrame | None:
-        """
-        Загружает следующую часть данных.
+        """Получает следующую часть данных и
+        преобразует её столбцы к заданным типам.
 
-        Если сессия приостановлена или завершена,
+        Если сессия завершена или приостановлена,
         возвращает None.
-
-        При достижении конца источника отмечает
-        сессию как завершённую.
         """
         if self._paused or self._finished:
             return None
 
         try:
+            # Получаем следующую часть из источника.
             chunk = next(self._iterator)
 
         except StopIteration:
             self._finished = True
             return None
 
-        self._chunks.append(chunk)
-        self._processed_rows += len(chunk)
+        # Преобразуем типы до сохранения чанка.
+        converted_chunk = convert_chunk(
+            chunk=chunk,
+            dtype=self._dtype,
+            errors=self._conversion_errors
+        )
 
-        return chunk
+        # Сохраняем только успешно обработанные данные.
+        self._chunks.append(converted_chunk)
 
+        self._processed_rows += len(converted_chunk)
+
+        return converted_chunk
     def load_all(self) -> pd.DataFrame:
         """
         Загружает оставшиеся части таблицы.
