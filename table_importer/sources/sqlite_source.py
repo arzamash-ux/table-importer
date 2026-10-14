@@ -1,4 +1,3 @@
-
 import sqlite3
 
 from collections.abc import Iterator
@@ -7,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from .base import DataSource
+from ..metadata import TableMetadata
 from ..exceptions import (
     SourceNotFoundError,
     TableNotFoundError,
@@ -102,50 +102,81 @@ class SQLiteSource(DataSource):
 
         return f'"{escaped}"'
 
-    def scan(
-        self,
-        table: str,
-        limit: int = 1000
-    ) -> dict:
-        """
-        Сканирует ограниченное число строк таблицы.
+    def scan(self, table: str,
+            limit: int = 1000
+            ) -> dict:
+            """
+            Сканирует ограниченное количество строк таблицы.
 
-        Возвращает список столбцов, предполагаемые
-        типы данных и количество пропусков.
-        """
-        if limit <= 0:
-            raise ValueError(
-                "Количество строк должно быть положительным"
+            Возвращает метаданные:
+            - количество строк;
+            - список столбцов;
+            - типы данных;
+            - количество пропусков.
+            """
+
+            if limit <= 0:
+                    raise ValueError(
+                    "Количество строк должно быть положительным"
+                )
+
+            quoted_table = self._quoted_table(table)
+
+            # Запрос для получения количества строк.
+            count_query = f"""
+                SELECT COUNT(*)
+                FROM {quoted_table}
+            """
+
+            # Запрос для получения выборки.
+            sample_query = f"""
+                SELECT *
+                FROM {quoted_table}
+                LIMIT ?
+            """
+
+            with self._connect() as connection:
+
+                # Узнаём полный размер таблицы.
+                total_rows = connection.execute(
+                    count_query
+                ).fetchone()[0]
+
+
+                # Получаем только часть данных.
+                sample = pd.read_sql_query(
+                    sample_query,
+                    connection,
+                    params=(limit,)
+                )
+
+
+            metadata = TableMetadata(
+
+                name=table,
+
+                total_rows=total_rows,
+
+                sampled_rows=len(sample),
+
+                columns_count=len(sample.columns),
+
+                columns=list(sample.columns),
+
+                dtypes={
+                    name: str(dtype)
+                    for name, dtype in sample.dtypes.items()
+                },
+
+                missing_values=(
+                    sample.isna()
+                    .sum()
+                    .to_dict()
+                ),
+
+                size_is_estimated=False
             )
-
-        quoted_table = self._quoted_table(table)
-
-        query = f"""
-            SELECT *
-            FROM {quoted_table}
-            LIMIT ?
-        """
-
-        with self._connect() as connection:
-            # LIMIT ограничивает объём считываемых данных.
-            sample = pd.read_sql_query(
-                query,
-                connection,
-                params=(limit,)
-            )
-
-        return {
-            "name": table,
-            "sampled_rows": len(sample),
-            "columns": list(sample.columns),
-            "dtypes": {
-                name: str(dtype)
-                for name, dtype in sample.dtypes.items()
-            },
-            "missing_values": (
-                sample.isna().sum().to_dict()
-            )
-        }
+            return metadata.to_dict()
 
     def iter_chunks(
         self,

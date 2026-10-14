@@ -7,8 +7,10 @@ from table_importer.exceptions import UnsupportedSourceError
 
 def test_importer_scan(tmp_path):
     """
-    Проверяет получение метаданных через единый интерфейс.
+    Проверяет получение метаданных
+    через единый интерфейс.
     """
+
     path = tmp_path / "users.csv"
 
     data = pd.DataFrame({
@@ -16,16 +18,25 @@ def test_importer_scan(tmp_path):
         "name": ["Alice", "Bob", "Charlie"]
     })
 
-    data.to_csv(path, index=False)
+    data.to_csv(
+        path,
+        index=False
+    )
 
     importer = TableImporter(path)
 
-    metadata = importer.scan(limit=2)
+    metadata = importer.scan(
+        limit=2
+    )
 
     assert metadata["name"] == "users"
-    assert metadata["sampled_rows"] == 2
-    assert metadata["columns"] == ["id", "name"]
 
+    assert metadata["rows"]["sampled"] == 2
+
+    assert metadata["columns"]["names"] == [
+        "id",
+        "name"
+    ]
 
 def test_importer_load(tmp_path):
     """

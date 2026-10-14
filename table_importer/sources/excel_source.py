@@ -7,6 +7,7 @@ import pandas as pd
 from openpyxl import load_workbook
 
 from .base import DataSource
+from ..metadata import TableMetadata
 from ..exceptions import (
     SourceNotFoundError,
     TableNotFoundError,
@@ -85,7 +86,10 @@ class ExcelSource(DataSource):
                 )
 
             worksheet = workbook[table]
-
+            total_rows = max(
+                worksheet.max_row - 1,
+                0
+                    )
             rows = worksheet.iter_rows(values_only=True)
 
             # Первая строка содержит названия столбцов.
@@ -108,18 +112,29 @@ class ExcelSource(DataSource):
                 columns=headers
             )
 
-            return {
-                "name": table,
-                "sampled_rows": len(sample),
-                "columns": list(sample.columns),
-                "dtypes": {
-                    str(name): str(dtype)
-                    for name, dtype in sample.dtypes.items()
-                },
-                "missing_values": (
-                    sample.isna().sum().to_dict()
-                )
-            }
+            metadata = TableMetadata(
+
+            name=table,
+
+            total_rows=total_rows,
+
+            sampled_rows=len(sample),
+
+            columns_count=len(sample.columns),
+
+            columns=list(sample.columns),
+
+            dtypes={
+                name: str(dtype)
+                for name, dtype in sample.dtypes.items()
+            },
+
+            missing_values=
+                sample.isna().sum().to_dict(),
+
+            size_is_estimated=False
+        ) 
+            return metadata.to_dict()
         finally:
             workbook.close()
 

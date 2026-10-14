@@ -85,10 +85,12 @@ def test_sqlite_scan(sqlite_database):
     )
 
     assert metadata["name"] == "users"
-    assert metadata["sampled_rows"] == 3
-    assert metadata["columns"] == [
-        "id", "name", "age"
-    ]
+    assert metadata["rows"]["sampled"] == 3
+    assert metadata["columns"]["names"] == [
+        "id",
+        "name",
+        "age"
+    ]   
     assert metadata["missing_values"]["age"] == 1
 
 

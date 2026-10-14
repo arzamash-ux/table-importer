@@ -54,8 +54,11 @@ def test_excel_scan(tmp_path):
 
     metadata = importer.scan(limit=2)
 
-    assert metadata["sampled_rows"] == 2
-    assert metadata["columns"] == ["id", "price"]
+    assert metadata["rows"]["sampled"] == 2
+    assert metadata["columns"]["names"] == [
+    "id",
+    "price"
+]
     assert metadata["missing_values"]["price"] == 1
 
 

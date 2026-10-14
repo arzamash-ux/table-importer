@@ -19,8 +19,12 @@ def test_csv_scan(tmp_path):
     source = CSVSource(path)
     metadata = source.scan("users", limit=2)
 
-    assert metadata["sampled_rows"] == 2
-    assert metadata["columns"] == ["id", "name", "age"]
+    assert metadata["rows"]["sampled"] == 2
+    assert metadata["columns"]["names"] == [
+    "id",
+    "name",
+    "age"
+]
     assert metadata["missing_values"]["name"] == 0
 
 
