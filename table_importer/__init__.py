@@ -4,5 +4,9 @@
 """
 
 from .importer import TableImporter
+from .session import ImportSession
 
-__all__ = ["TableImporter"]
+__all__ = [
+    "TableImporter",
+    "ImportSession"
+]
