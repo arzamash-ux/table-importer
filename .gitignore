@@ -1,8 +1,21 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Tests
 .pytest_cache/
-.env
+
+# IDE
+.vscode/
+
+# Build
 dist/
 build/
 *.egg-info/
+
+# Temporary files
+*.tmp
+*.log

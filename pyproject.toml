@@ -1,4 +1,38 @@
+[build-system]
+requires = [
+    "setuptools>=61"
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "table-importer"
+
+version = "0.1.0"
+
+description = "Universal library for importing tabular data"
+
+requires-python = ">=3.10"
+
+dependencies = [
+    "pandas>=2.0",
+    "openpyxl>=3.1"
+]
+
+
 [project.optional-dependencies]
+
 dev = [
-    "pytest",
+    "pytest>=8.0"
+]
+
+
+[tool.pytest.ini_options]
+
+testpaths = [
+    "tests"
+]
+
+python_files = [
+    "test_*.py"
 ]
